@@ -2,6 +2,10 @@ version: '3'
 
 services:
   backend:
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/course
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
     build:
       context: ./backend
       dockerfile: Dockerfile
