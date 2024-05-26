@@ -101,6 +101,12 @@ This project is licensed under the MIT License.
 
 ## rebuild all images
 docker-compose down --rmi all --volumes --remove-orphans && docker-compose up --build -d
+
+##
+docker stop $(docker ps -q) && docker rm $(docker ps -a -q)
+
+##
+docker-compose build --no-cache && docker-compose up -d
 ```
 
 This README.md provides an overview of the repository, instructions on how to set up and run the application, and details on how to update and commit changes to the submodules. Adjust the content to match your specific project details and repository URLs.
