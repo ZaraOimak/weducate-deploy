@@ -17,11 +17,13 @@ services:
       - app-network
 
   frontend:
+    environment:
+      - REACT_APP_BACKEND_URL=http://185.189.167.175
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "0.0.0.0:80:3000"
+      - "80:3000"
     networks:
       - app-network
 
