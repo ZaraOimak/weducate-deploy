@@ -6,6 +6,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/course
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=admin
+      - ALLOWED_ORIGINS=http://185.189.167.175
     build:
       context: ./backend
       dockerfile: Dockerfile
