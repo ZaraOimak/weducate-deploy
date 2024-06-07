@@ -10,10 +10,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
+    expose:
       - "8080"
-    depends_on:
-      - db
     networks:
       - app-network
 
@@ -23,7 +21,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
+    expose:
       - "3000"
     networks:
       - app-network
@@ -50,6 +48,7 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/www/certbot:/var/www/certbot
+      - /var/log/certbot:/var/log/certbot
     depends_on:
       - frontend
       - backend
