@@ -13,17 +13,15 @@ COPY nginx.conf /etc/nginx/nginx_ssl.conf
 RUN mkdir -p /var/www/certbot /var/log/certbot
 
 # Start Nginx, run Certbot, and reload Nginx with logging
-CMD ["sh", "-c", "
-    echo 'Starting Nginx' > /var/log/certbot/step.log;
-    nginx;
-    echo 'Nginx started' >> /var/log/certbot/step.log;
-    sleep 5;
-    echo 'Running Certbot' >> /var/log/certbot/step.log;
-    certbot certonly --webroot -w /var/www/certbot -d weducate.ru -d www.weducate.ru --email emaildlyaege@gmail.com --agree-tos --non-interactive >> /var/log/certbot/certbot.log 2>&1;
-    echo 'Certbot completed' >> /var/log/certbot/step.log;
-    cp /etc/nginx/nginx_ssl.conf /etc/nginx/nginx.conf;
-    echo 'Nginx configuration updated' >> /var/log/certbot/step.log;
-    nginx -s reload;
-    echo 'Nginx reloaded' >> /var/log/certbot/step.log;
-    tail -f /var/log/certbot/certbot.log
-"]
+CMD ["sh", "-c", "echo 'Starting Nginx' > /var/log/certbot/step.log;\
+    nginx;\
+    echo 'Nginx started' >> /var/log/certbot/step.log;\
+    sleep 5;\
+    echo 'Running Certbot' >> /var/log/certbot/step.log;\
+    certbot certonly --webroot -w /var/www/certbot -d weducate.ru -d www.weducate.ru --email emaildlyaege@gmail.com --agree-tos --non-interactive >> /var/log/certbot/certbot.log 2>&1;\
+    echo 'Certbot completed' >> /var/log/certbot/step.log;\
+    cp /etc/nginx/nginx_ssl.conf /etc/nginx/nginx.conf;\
+    echo 'Nginx configuration updated' >> /var/log/certbot/step.log;\
+    nginx -s reload;\
+    echo 'Nginx reloaded' >> /var/log/certbot/step.log;\
+    tail -f /var/log/certbot/certbot.log"]
