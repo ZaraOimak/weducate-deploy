@@ -1,32 +1,74 @@
-# Setting Up HTTPS for Frontend and Backend Services Using Nginx and Docker Compose
+To organize all Nginx-related files into an `nginx` folder and automate the process of obtaining SSL certificates and configuring Nginx, follow these steps:
 
-## Prerequisites
+### Project Structure
 
-- Docker and Docker Compose installed on your server.
-- OpenSSL installed on your server.
+Organize your project directory like this:
 
-## Steps
-
-### 1. Generate Self-Signed SSL Certificates
-
-Use OpenSSL to generate self-signed SSL certificates. Replace `185.189.167.175` with your actual IP address.
-
-```sh
-mkdir -p certs
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout certs/nginx-selfsigned.key -out certs/nginx-selfsigned.crt -subj "/CN=185.189.167.175"
-openssl dhparam -out certs/dhparam.pem 2048
+```
+your_project/
+├── backend/
+├── frontend/
+├── nginx/
+│   ├── Dockerfile
+│   ├── nginx_temp.conf
+│   ├── nginx.conf
+└── docker-compose.yml
 ```
 
-### 2. Create Nginx Configuration File
+### 1. `nginx/Dockerfile`
 
-Create an Nginx configuration file `nginx.conf` to handle both frontend and backend proxying with HTTPS, using different ports.
+Create `nginx/Dockerfile` to set up Certbot and Nginx:
 
-**nginx.conf**:
+```Dockerfile
+FROM nginx:latest
+
+# Install Certbot
+RUN apt-get update && apt-get install -y certbot python3-certbot-nginx
+
+# Copy the initial Nginx configuration for Certbot validation
+COPY nginx_temp.conf /etc/nginx/conf.d/default.conf
+
+# Copy the final Nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Create the necessary directory for Certbot
+RUN mkdir -p /var/www/certbot
+
+# Obtain certificates and reload Nginx
+CMD ["sh", "-c", "nginx && sleep 5 && certbot certonly --webroot -w /var/www/certbot -d example.com -d www.example.com --email your-email@example.com --agree-tos --non-interactive && cp /etc/nginx/nginx.conf /etc/nginx/conf.d/default.conf && nginx -s reload && tail -f /dev/null"]
+```
+
+### 2. `nginx/nginx_temp.conf`
+
+Create `nginx/nginx_temp.conf`:
 
 ```nginx
 server {
     listen 80;
-    server_name 185.189.167.175;
+    server_name example.com www.example.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+```
+
+### 3. `nginx/nginx.conf`
+
+Create `nginx/nginx.conf`:
+
+```nginx
+server {
+    listen 80;
+    server_name example.com www.example.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
 
     location / {
         return 301 https://$host$request_uri;
@@ -35,21 +77,12 @@ server {
 
 server {
     listen 443 ssl;
-    server_name 185.189.167.175;
+    server_name example.com www.example.com;
 
-    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
-    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
-    ssl_dhparam /etc/ssl/certs/dhparam.pem;
-
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256';
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:MozSSL:10m;
-    ssl_session_tickets off;
-
-    ssl_stapling on;
-    ssl_stapling_verify on;
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     location / {
         proxy_pass http://frontend:3000;
@@ -62,21 +95,12 @@ server {
 
 server {
     listen 8443 ssl;
-    server_name 185.189.167.175;
+    server_name example.com www.example.com;
 
-    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
-    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
-    ssl_dhparam /etc/ssl/certs/dhparam.pem;
-
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256';
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:MozSSL:10m;
-    ssl_session_tickets off;
-
-    ssl_stapling on;
-    ssl_stapling_verify on;
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     location / {
         proxy_pass http://backend:8080;
@@ -88,11 +112,9 @@ server {
 }
 ```
 
-### 3. Modify Docker Compose Configuration
+### 4. `docker-compose.yml`
 
-Update your `docker-compose.yml` file to include the Nginx service and mount the necessary SSL certificate files.
-
-**docker-compose.yml**:
+Ensure your `docker-compose.yml` points to the custom Dockerfile and mounts the necessary volumes:
 
 ```yaml
 version: '3'
@@ -103,7 +125,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/course
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=admin
-      - ALLOWED_ORIGINS=https://185.189.167.175:8443
+      - ALLOWED_ORIGINS=https://example.com,https://example.com:8443
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -114,7 +136,7 @@ services:
 
   frontend:
     environment:
-      - REACT_APP_BACKEND_URL=https://185.189.167.175:8443
+      - REACT_APP_BACKEND_URL=https://example.com:8443
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -135,16 +157,16 @@ services:
       - app-network
 
   nginx:
-    image: nginx:latest
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
       - "80:80"
       - "443:443"
       - "8443:8443"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./certs/nginx-selfsigned.crt:/etc/ssl/certs/nginx-selfsigned.crt
-      - ./certs/nginx-selfsigned.key:/etc/ssl/private/nginx-selfsigned.key
-      - ./certs/dhparam.pem:/etc/ssl/certs/dhparam.pem
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
     depends_on:
       - frontend
       - backend
@@ -156,16 +178,15 @@ networks:
     driver: bridge
 ```
 
-### 4. Build and Run Docker Compose
+### Running the Setup
 
-Build and run the Docker Compose services:
+Build and run your Docker Compose services:
 
 ```sh
 docker-compose up --build -d
 ```
 
-### 5. Access Your Application
-
-Open a web browser and navigate to:
-- `https://185.189.167.175` to access your frontend application over HTTPS.
-- `https://185.189.167.175:8443` to access your backend API over HTTPS.
+This setup will:
+1. Install Certbot and configure Nginx.
+2. Obtain SSL certificates when the Nginx container starts.
+3. Apply the certificates and reload Nginx to serve your frontend and backend over HTTPS.

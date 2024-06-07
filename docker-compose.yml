@@ -6,7 +6,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/course
       - SPRING_DATASOURCE_USERNAME=admin
       - SPRING_DATASOURCE_PASSWORD=admin
-      - ALLOWED_ORIGINS=https://185.189.167.175,https://185.189.167.175:8443
+      - ALLOWED_ORIGINS=https://weducate.ru,https://weducate.ru:8443
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -19,7 +19,7 @@ services:
 
   frontend:
     environment:
-      - REACT_APP_BACKEND_URL=https://185.189.167.175:8443
+      - REACT_APP_BACKEND_URL=https://weducate.ru:8443
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -40,16 +40,16 @@ services:
       - app-network
 
   nginx:
-    image: nginx:latest
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
       - "80:80"
       - "443:443"
       - "8443:8443"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./certs/nginx-selfsigned.crt:/etc/ssl/certs/nginx-selfsigned.crt
-      - ./certs/nginx-selfsigned.key:/etc/ssl/private/nginx-selfsigned.key
-      - ./certs/dhparam.pem:/etc/ssl/certs/dhparam.pem
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
     depends_on:
       - frontend
       - backend
